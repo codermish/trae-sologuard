@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+  reviews  Review[]
+  wishlist Wishlist[]
+
+  @@map("users")
+}
+
+model Hotel {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  address     String
+  city        String
+  state       String?
+  country     String
+  postalCode  String?
+  latitude    Float
+  longitude   Float
+  rating      Float    @default(0)
+  priceRange  Json     // { min: number, max: number }
+  amenities   String[] // Array of amenity names
+  images      String[] // Array of image URLs
+  phone       String?
+  email       String?
+  website     String?
+  checkIn     String   // "15:00"
+  checkOut    String   // "11:00"
+  policies    Json     // Hotel policies object
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms      Room[]
+  reviews    Review[]
+  bookings   Booking[]
+  wishlist   Wishlist[]
+
+  @@map("hotels")
+}
+
+model Room {
+  id          String  @id @default(cuid())
+  hotelId     String
+  name        String
+  description String
+  type        String // "standard", "deluxe", "suite"
+  capacity    Int    // Max guests
+  price       Float
+  size        Int?   // Square feet
+  amenities   String[]
+  images      String[]
+  isAvailable Boolean @default(true)
+  quantity    Int     @default(1)
+
+  hotel    Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@map("rooms")
+}
+
+model Flight {
+  id               String   @id @default(cuid())
+  airline          String
+  flightNumber     String
+  aircraft         String?
+  departureAirport String
+  arrivalAirport   String
+  departureTime    DateTime
+  arrivalTime      DateTime
+  duration         Int      // minutes
+  stops            Int      @default(0)
+  stopovers        String[] // Airport codes for stops
+  price            Float
+  priceClass       String   // "economy", "business", "first"
+  availableSeats   Int
+  totalSeats       Int
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  bookings Booking[]
+  wishlist Wishlist[]
+
+  @@map("flights")
+}
+
+model Car {
+  id          String  @id @default(cuid())
+  company     String  // Rental company
+  model       String
+  category    String  // "economy", "compact", "suv", "luxury"
+  year        Int
+  seats       Int
+  doors       Int
+  transmission String // "manual", "automatic"
+  fuelType    String // "gasoline", "diesel", "electric", "hybrid"
+  pricePerDay Float
+  location    String // Pickup location
+  latitude    Float
+  longitude   Float
+  images      String[]
+  features    String[]
+  isAvailable Boolean @default(true)
+  quantity    Int     @default(1)
+
+  bookings Booking[]
+
+  @@map("cars")
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  userId      String
+  type        BookingType
+  status      BookingStatus @default(PENDING)
+  totalAmount Float
+  currency    String        @default("USD")
+  checkIn     DateTime?
+  checkOut    DateTime?
+  guests      Int           @default(1)
+  rooms       Int           @default(1)
+  specialRequests String?
+  contactInfo Json // { name: string, email: string, phone: string }
+  paymentId   String?       // Stripe payment intent ID
+  paymentStatus PaymentStatus @default(PENDING)
+  cancelledAt DateTime?
+  cancellationReason String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotel    Hotel?    @relation(fields: [hotelId], references: [id])
+  room     Room?     @relation(fields: [roomId], references: [id])
+  flight   Flight?   @relation(fields: [flightId], references: [id])
+  car      Car?      @relation(fields: [carId], references: [id])
+  
+  hotelId  String?
+  roomId   String?
+  flightId String?
+  carId    String?
+
+  @@map("bookings")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  hotelId   String
+  rating    Int      // 1-5
+  title     String
+  comment   String
+  images    String[]
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hotelId])
+  @@map("reviews")
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  hotelId   String?
+  flightId  String?
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotel  Hotel? @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  flight Flight? @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hotelId])
+  @@unique([userId, flightId])
+  @@map("wishlist")
+}
+
+model Destination {
+  id          String   @id @default(cuid())
+  name        String
+  country     String
+  description String
+  images      String[]
+  popular     Boolean  @default(false)
+  latitude    Float
+  longitude   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("destinations")
+}
+
+enum BookingType {
+  HOTEL
+  FLIGHT
+  CAR
+  PACKAGE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}

@@ -1,0 +1,6 @@
+export { default as SearchBar } from './SearchBar'
+export { default as HotelList } from './HotelList'
+export { default as FlightList } from './FlightList'
+export { default as BookingForm } from './BookingForm'
+export { default as InteractiveMap } from './InteractiveMap'
+export { default as UserDashboard } from './UserDashboard'
